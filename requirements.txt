@@ -1,8 +1,7 @@
 fastapi
 uvicorn
-earthengine-api
-google-auth
-numpy
-pydantic
+websockets
 requests
 numpy
+global-land-mask
+scikit-learn
