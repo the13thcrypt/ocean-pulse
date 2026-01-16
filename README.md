@@ -1,35 +1,72 @@
-OceanPulse AI is a real-time maritime intelligence system designed to shift ocean waste management from reactive cleanup to proactive prevention. By integrating live satellite feeds, hydrodynamic physics simulations, and unsupervised machine learning, the system predicts exactly where offshore waste will beach within the next 24 hours. This allows authorities, such as the Coast Guard and municipal bodies, to deploy resources to specific coastal "Impact Zones" before pollution spreads.
+OceanPulse AI – Predictive Marine Waste Drift Intelligence System
+Project Description
 
-#### *The Problem*
+OceanPulse AI is a predictive maritime intelligence system designed to shift coastal waste management from reactive cleanup to proactive interception. Instead of responding after trash accumulates on beaches, OceanPulse AI identifies likely offshore waste source zones and predicts where that waste is most likely to reach the coastline, enabling authorities to act in advance.
 
-Current methods for tracking marine debris are dangerously inefficient. Authorities typically rely on visual sightings or public reports, meaning action is taken only after waste has already accumulated on beaches, damaging ecosystems and tourism. There is currently no operational tool that connects real-time ship traffic data with coastal accumulation predictions in a way that is actionable for ground teams.
+Marine pollution today is addressed largely through post-impact efforts—cleanup drives that occur only after waste has already harmed ecosystems, tourism, and coastal livelihoods. A major gap in existing solutions is the lack of an operational system that connects maritime activity, environmental forces, and coastal impact prediction in a single, actionable workflow. OceanPulse AI addresses this gap.
 
-#### *The Technical Solution*
+Core Concept
 
-OceanPulse AI solves this using a three-tier architecture:
+OceanPulse AI operates on a simple but powerful principle:
 
-*1. The Input Layer: Live Satellite Ingestion*
-The system connects directly to the AIS (Automatic Identification System) satellite network via high-speed WebSockets. It filters live maritime traffic data to target specific high-risk regions (e.g., the Mumbai Coast or Singapore Strait). Unlike static datasets, this system operates in real-time, capturing ship coordinates (Lat, Lon) and identifiers (MMSI) the moment they are broadcast.
+Waste introduced offshore does not move randomly—it follows predictable drift patterns driven by wind and surface dynamics.
 
-*2. The Physics Layer: Hydrodynamic Drift Modeling*
-Once a vessel is detected, the *DriftEngine* activates. Instead of assuming waste stays stationary, the engine applies real-world environmental forces to simulate 24 hours of movement.
+By identifying high-probability waste source zones offshore and modeling their drift toward land, OceanPulse AI predicts where waste is most likely to beach within a defined time horizon.
 
-* *Wind Forcing:* Applies prevailing regional winds (e.g., NNW winds for Mumbai winter) to push particles shoreward.
-* *Tidal Oscillation:* Simulates semidiurnal tidal currents, creating realistic elliptical drift paths.
-* *Probabilistic Ensemble:* The system generates 20+ "virtual waste particles" per ship, adding stochastic noise (turbulence) to account for ocean unpredictability.
+System Architecture
 
-*3. The Intelligence Layer: AI & Unsupervised Learning*
-This is the core innovation. A raw physics simulation results in thousands of scattered points, which are useless to human operators. OceanPulse employs *DBSCAN (Density-Based Spatial Clustering of Applications with Noise)* from the scikit-learn library to make sense of this chaos.
+The system is built using a modular, real-world data pipeline:
 
-* *Noise Filtering:* The AI automatically discards "outlier" drift paths that are statistically unlikely to hit land.
-* *Cluster Detection:* It identifies high-density areas where multiple drift paths converge on the coastline.
-* *Dynamic Sizing:* Using standard deviation, the AI calculates the precise radius of the accumulation zone. If the probability is tight, the alert circle shrinks, giving the Coast Guard a high-precision target (e.g., a specific 200m stretch of Juhu Beach).
+1. Offshore Activity Detection (Google Earth Engine)
 
-#### *Key Innovations*
+OceanPulse AI uses Sentinel-1 Synthetic Aperture Radar (SAR) imagery accessed through Google Earth Engine to identify persistent maritime activity zones near coastlines. Instead of relying on simulated or manually entered ship data, the system analyzes long-term radar backscatter patterns to highlight shipping corridors and high-traffic marine zones, which serve as probable waste source regions.
 
-* *Zero-Latency Visualization:* Built on *FastAPI* and *WebSockets*, the frontend updates instantly. There is no "refresh" button; ships move and alert zones appear dynamically on a Google Maps Satellite interface.
-* *False Positive Reduction:* By combining physics (is it possible?) with AI clustering (is it probable?), the system eliminates false alarms, ensuring authorities only receive alerts for high-confidence events.
+This approach is robust, scalable, and avoids the instability of live AIS feeds while remaining grounded in real satellite observations.
 
-#### *Real-World Impact*
+2. Environmental Intelligence (Live Weather Data)
 
-OceanPulse AI transforms a complex environmental challenge into a logistics problem. By providing a 24-hour warning window and precise geolocation coordinates, it empowers agencies to intercept waste at the shoreline, protecting marine biodiversity and reducing cleanup costs.
+For each detected offshore source zone, OceanPulse AI fetches live wind speed and wind direction data using the Open-Meteo API. These parameters represent the dominant forces influencing surface-level waste movement.
+
+3. Waste Drift Prediction Engine
+
+Using physics-based vector modeling, the system projects waste movement forward in time based on wind direction and magnitude. Each source zone produces a predicted drift path, representing how floating waste would move across the ocean surface.
+
+A land-intersection check is applied using a global land mask to determine whether the predicted path results in coastal beaching. This converts raw movement into a clear, actionable outcome.
+
+4. Real-Time Visualization (Google Maps)
+
+Results are rendered on an interactive Google Maps satellite interface:
+
+Blue markers represent offshore waste source zones
+
+Red or orange vectors represent predicted waste drift trajectories
+
+Drift paths pointing toward land indicate high-risk impact zones
+
+The visualization makes complex environmental modeling immediately understandable for decision-makers, coastal guards, and cleanup agencies.
+
+Key Innovations
+
+No mock data: All inputs are derived from real satellite observations and live weather feeds.
+
+Proactive focus: Predicts impact before waste reaches shore.
+
+Scalable design: Region-based analysis allows deployment across different coastlines.
+
+Explainable outputs: Clear visual linkage between source, drift, and impact.
+
+Impact and Use Cases
+
+OceanPulse AI enables:
+
+Early deployment of cleanup resources
+
+Targeted coastal protection efforts
+
+Data-driven decision-making for environmental agencies
+
+Reduced ecological and economic damage from marine waste
+
+Conclusion
+
+OceanPulse AI demonstrates how satellite data, environmental intelligence, and predictive modeling can be combined into a practical tool for marine pollution prevention. By focusing on where waste will go, not just where it is, the system provides a meaningful step toward smarter, faster, and more sustainable coastal protection.
