@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from sklearn.cluster import DBSCAN
 
 # --- 1. CONFIGURATION ---
-AISSTREAM_KEY = "e7e664a1dfe3a934df6838ed6131c6ed4b7640ee"
+AISSTREAM_KEY = ""
 
 app = FastAPI()
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -136,4 +136,5 @@ async def startup_event():
     asyncio.create_task(ais_listener())
 
 if __name__ == "__main__":
+
     uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
