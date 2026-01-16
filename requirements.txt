@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+earthengine-api
+google-auth
+numpy
+pydantic
+requests
+numpy

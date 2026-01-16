@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OceanPulse AI | Predictive Marine Intelligence</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #030305;
+            --glass-bg: rgba(10, 15, 30, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-cyan: #00f0ff;
+            --accent-alert: #ff2a2a;
+            --text-main: #e0e6ed;
+            --text-muted: #8b9bb4;
+            --font-ui: 'Inter', sans-serif;
+            --font-data: 'Space Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* --- WEBGL CANVAS --- */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0; /* Fade in on load */
+            transition: opacity 1.5s ease-out;
+        }
+
+        /* --- HUD & UI OVERLAYS --- */
+        .scan-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.3;
+        }
+
+        .hud-corner {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--glass-border);
+            z-index: 50;
+            pointer-events: none;
+        }
+        .tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+        .hud-data {
+            position: fixed;
+            bottom: 30px;
+            left: 80px;
+            font-family: var(--font-data);
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            z-index: 50;
+            display: flex;
+            gap: 20px;
+        }
+
+        .data-point span { color: var(--text-muted); }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            mix-blend-mode: difference;
+        }
+
+        .brand {
+            font-family: var(--font-ui);
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.05em;
+            text-transform: uppercase;
+        }
+
+        .brand span { color: var(--accent-cyan); }
+
+        .nav-status {
+            font-family: var(--font-data);
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-cyan);
+            animation: pulse 2s infinite;
+        }
+
+        /* --- SECTIONS --- */
+        section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 10vw;
+            position: relative;
+        }
+
+        /* Hero */
+        .hero h1 {
+            font-size: clamp(3rem, 7vw, 6.5rem);
+            line-height: 1.05;
+            font-weight: 300;
+            letter-spacing: -0.03em;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .hero h1 b {
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.2);
+            display: block;
+        }
+
+        .hero p {
+            font-family: var(--font-data);
+            max-width: 520px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 3rem;
+            border-left: 2px solid var(--accent-cyan);
+            padding-left: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            font-family: var(--font-data);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            text-decoration: none;
+            width: fit-content;
+            opacity: 0;
+        }
+
+        .cta-btn:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+
+        /* Intelligence Section */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+
+        .tech-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            transform: translateY(50px);
+            opacity: 0;
+        }
+
+        .tech-card h3 {
+            font-family: var(--font-data);
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .tech-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Impact Section */
+        .impact-stat {
+            font-size: clamp(4rem, 10vw, 12rem);
+            font-weight: 700;
+            line-height: 1;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255,255,255,0.3);
+            position: relative;
+        }
+
+        .impact-stat::after {
+            content: attr(data-val);
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--text-main);
+            clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+            transition: clip-path 1.5s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .impact-stat.visible::after {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        footer {
+            padding: 4rem;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            background: #020202;
+        }
+
+        .footer-logo {
+            font-family: var(--font-ui);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover { color: var(--accent-cyan); }
+
+        /* Loader */
+        .loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loader-bar {
+            width: 200px;
+            height: 2px;
+            background: #222;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loader-progress {
+            position: absolute;
+            top: 0; left: 0; height: 100%; width: 0%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 3rem; }
+            nav { padding: 1.5rem; }
+            .hud-data { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loader">
+        <div style="font-family: 'Space Mono'; font-size: 0.8rem; letter-spacing: 2px;">INITIALIZING DRIFT ENGINE</div>
+        <div class="loader-bar"><div class="loader-progress"></div></div>
+    </div>
+
+    <div class="scan-lines"></div>
+    <div id="canvas-container"></div>
+    
+    <div class="hud-corner tl"></div>
+    <div class="hud-corner tr"></div>
+    <div class="hud-corner bl"></div>
+    <div class="hud-corner br"></div>
+
+    <div class="hud-data">
+        <div class="data-point"><span>INPUT:</span> AIS WEBSOCKETS</div>
+        <div class="data-point"><span>MODEL:</span> DBSCAN</div>
+        <div class="data-point"><span>LATENCY:</span> &lt; 50ms</div>
+        <div class="data-point"><span>STATUS:</span> PREDICTIVE</div>
+    </div>
+
+    <nav>
+        <div class="brand">Ocean<span>Pulse</span></div>
+        <div class="nav-status">
+            SYSTEM ACTIVE
+            <div class="status-dot"></div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>FROM REACTIVE<br><b>TO PROACTIVE</b></h1>
+            <p>
+                A real-time maritime intelligence system integrating live AIS satellite feeds, 
+                hydrodynamic physics simulations, and unsupervised learning to predict 
+                coastal waste impact zones 24 hours in advance.
+            </p>
+            <a href="http://localhost:8001/index.html" class="cta-btn">View Impact Zones</a>
+        </section>
+
+        <section class="tech">
+            <div style="font-family: 'Space Mono'; color: var(--accent-cyan); margin-bottom: 20px;">/// THREE-TIER ARCHITECTURE</div>
+            <h2 style="font-size: 3rem; margin-bottom: 2rem;">THE SOLUTION</h2>
+            
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <h3>01. Input: Satellite Ingestion</h3>
+                    <p>Direct WebSocket connection to the global AIS network. We filter live maritime traffic (MMSI, Lat/Lon) to target high-risk regions instantaneously.</p>
+                </div>
+                <div class="tech-card">
+                    <h3>02. Physics: DriftEngine™</h3>
+                    <p>Applying real-world forces—wind vectors and semi-diurnal tidal oscillations—to simulate probabilistic waste drift paths for every detected vessel.</p>
+                </div>
+                <div class="tech-card">
+                    <h3>03. Intelligence: DBSCAN</h3>
+                    <p>Unsupervised clustering algorithms filter stochastic noise and false positives, identifying high-density convergence zones with meter-level precision.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="impact">
+            <div style="font-family: 'Space Mono'; color: var(--accent-alert); margin-bottom: 20px;">/// OPERATIONAL ADVANTAGE</div>
+            <h2 style="font-size: 2rem; max-width: 600px; margin-bottom: 4rem;">TRANSFORMING ENVIRONMENTAL CHAOS INTO A LOGISTICS SOLUTION.</h2>
+            
+            <div class="impact-stat" data-val="24HR">24HR</div>
+            <p style="font-family: 'Space Mono'; margin-top: 1rem; color: var(--text-muted);">ADVANCED WARNING WINDOW</p>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-left">
+            <div class="footer-logo">OCEANPULSE</div>
+            <div style="font-family: 'Space Mono'; font-size: 0.7rem; color: #555;">
+                SECURE CONNECTION // ENCRYPTED<br>
+                © 2026 OCEANPULSE SYSTEMS.
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="http://localhost:8001/index.html">DRIFT ENGINE</a>
+            <a href="http://localhost:8001/index.html">ACCESS API</a>
+            <a href="http://localhost:8001/index.html">MUNICIPAL LOGIN</a>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. LOADER ANIMATION ---
+        const tlLoader = gsap.timeline({
+            onComplete: () => {
+                document.querySelector('.loader').style.display = 'none';
+                document.getElementById('canvas-container').style.opacity = '1';
+                initHeroAnim();
+            }
+        });
+
+        tlLoader.to('.loader-progress', { width: '100%', duration: 1.5, ease: 'power2.inOut' })
+                .to('.loader', { opacity: 0, duration: 0.5 });
+
+
+        // --- 2. THREE.JS SCENE SETUP ---
+        const scene = new THREE.Scene();
+        // Fog for depth
+        scene.fog = new THREE.FogExp2(0x030305, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 18;
+        camera.position.x = 0;
+        camera.position.y = 0;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // --- 3. THE EARTH OBJECTS ---
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        // A. The Core Sphere (Dark Ocean)
+        const geometry = new THREE.IcosahedronGeometry(5, 12); // High detail
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x0a1122,
+            emissive: 0x001133,
+            emissiveIntensity: 0.2,
+            shininess: 40,
+            flatShading: false
+        });
+        const earth = new THREE.Mesh(geometry, material);
+        earthGroup.add(earth);
+
+        // B. Wireframe Overlay (Digital Grid)
+        const wireGeo = new THREE.IcosahedronGeometry(5.05, 4); // Lower detail for grid
+        const wireMat = new THREE.MeshBasicMaterial({
+            color: 0x00f0ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.05
+        });
+        const wireframe = new THREE.Mesh(wireGeo, wireMat);
+        earthGroup.add(wireframe);
+
+        // C. Atmosphere Glow (Shader approximation)
+        const glowGeo = new THREE.IcosahedronGeometry(5.2, 12);
+        const glowMat = new THREE.ShaderMaterial({
+            uniforms: { 
+                c: { type: "f", value: 0.1 }, // Intensity
+                p: { type: "f", value: 3.5 }, // Falloff
+                glowColor: { type: "c", value: new THREE.Color(0x0088ff) },
+                viewVector: { type: "v3", value: camera.position }
+            },
+            vertexShader: `
+                uniform vec3 viewVector;
+                varying float intensity;
+                void main() {
+                    vec3 vNormal = normalize( normalMatrix * normal );
+                    vec3 vNormel = normalize( normalMatrix * viewVector );
+                    intensity = pow( 0.45 - dot(vNormal, vNormel), 4.0 );
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 glowColor;
+                varying float intensity;
+                void main() {
+                    vec3 glow = glowColor * intensity;
+                    gl_FragColor = vec4( glow, 1.0 );
+                }
+            `,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            transparent: true
+        });
+        const atmosphere = new THREE.Mesh(glowGeo, glowMat);
+        earthGroup.add(atmosphere);
+
+        // D. Data Points (Ships/Waste)
+        const particleCount = 600;
+        const particleGeo = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        
+        const color1 = new THREE.Color(0x00f0ff); // Safe/Ship
+        const color2 = new THREE.Color(0xff2a2a); // Danger/Waste
+
+        for(let i=0; i<particleCount; i++) {
+            // Random point on sphere surface
+            const phi = Math.acos( -1 + ( 2 * i ) / particleCount );
+            const theta = Math.sqrt( particleCount * Math.PI ) * phi;
+            
+            const r = 5.1; // Slightly above surface
+            const x = r * Math.cos( theta ) * Math.sin( phi );
+            const y = r * Math.sin( theta ) * Math.sin( phi );
+            const z = r * Math.cos( phi );
+            
+            positions.push(x, y, z);
+
+            // Mix colors based on random logic to simulate clusters
+            const isDanger = Math.random() > 0.8;
+            const col = isDanger ? color2 : color1;
+            colors.push(col.r, col.g, col.b);
+        }
+
+        particleGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        particleGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        const particleMat = new THREE.PointsMaterial({
+            size: 0.08,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particles = new THREE.Points(particleGeo, particleMat);
+        earthGroup.add(particles);
+
+        // E. Orbital Rings
+        const ringGeo = new THREE.TorusGeometry(7, 0.02, 16, 100);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.3 });
+        const ring1 = new THREE.Mesh(ringGeo, ringMat);
+        ring1.rotation.x = Math.PI / 2;
+        earthGroup.add(ring1);
+
+        const ring2 = new THREE.Mesh(ringGeo, ringMat);
+        ring2.rotation.x = Math.PI / 1.8;
+        ring2.rotation.y = Math.PI / 6;
+        ring2.scale.set(1.2, 1.2, 1.2);
+        earthGroup.add(ring2);
+
+
+        // --- 4. LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x111111);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        sunLight.position.set(10, 10, 10);
+        scene.add(sunLight);
+        
+        const blueLight = new THREE.PointLight(0x0044ff, 2, 50);
+        blueLight.position.set(-10, -5, 5);
+        scene.add(blueLight);
+
+
+        // --- 5. ANIMATION LOOP ---
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+
+        const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - windowHalfX);
+            mouseY = (event.clientY - windowHalfY);
+        });
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const elapsedTime = clock.getElapsedTime();
+
+            // Constant Rotation
+            earthGroup.rotation.y += 0.001;
+            particles.rotation.y += 0.0005; // Different speed for depth
+            ring1.rotation.z -= 0.002;
+            ring2.rotation.z += 0.001;
+
+            // Mouse Interaction (Smooth lerp)
+            targetX = mouseX * 0.0005;
+            targetY = mouseY * 0.0005;
+
+            earthGroup.rotation.y += 0.05 * (targetX - earthGroup.rotation.y); // Subtle manual control
+            earthGroup.rotation.x += 0.05 * (targetY - earthGroup.rotation.x);
+
+            // Update Shader View Vector
+            glowMat.uniforms.viewVector.value = new THREE.Vector3().subVectors(camera.position, atmosphere.position);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+
+        // --- 6. SCROLL INTERACTIONS (GSAP) ---
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Move Earth on Scroll
+        gsap.to(earthGroup.position, {
+            scrollTrigger: {
+                trigger: "body",
+                start: "top top",
+                end: "bottom bottom",
+                scrub: 2
+            },
+            x: -3, // Move left to make room for text
+            y: 1
+        });
+        
+        // Zoom camera out slightly
+        gsap.to(camera.position, {
+            scrollTrigger: {
+                trigger: "body",
+                start: "top top",
+                end: "bottom bottom",
+                scrub: 2
+            },
+            z: 22
+        });
+
+        // Hero Animations
+        function initHeroAnim() {
+            gsap.to(".hero h1", { opacity: 1, y: 0, duration: 1, delay: 0.2 });
+            gsap.to(".hero p", { opacity: 1, y: 0, duration: 1, delay: 0.4 });
+            gsap.to(".cta-btn", { opacity: 1, duration: 1, delay: 0.6 });
+        }
+
+        // Tech Cards Reveal
+        gsap.utils.toArray('.tech-card').forEach((card, i) => {
+            gsap.to(card, {
+                scrollTrigger: {
+                    trigger: card,
+                    start: "top 85%",
+                    toggleActions: "play none none reverse"
+                },
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                delay: i * 0.2
+            });
+        });
+
+        // Impact Stat Reveal
+        ScrollTrigger.create({
+            trigger: ".impact-stat",
+            start: "top 75%",
+            onEnter: () => document.querySelector(".impact-stat").classList.add("visible")
+        });
+
+
+        // --- 7. RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

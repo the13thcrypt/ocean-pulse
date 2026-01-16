@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Ocean Tracker</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
+        #map { height: 100vh; width: 100vw; }
+        #hud {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px;
+            border: 1px solid #555; width: 250px; z-index: 999;
+        }
+        .item { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; font-size: 13px; }
+        .success { color: #4ade80; font-weight: bold; }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCmYP4ezSnfiVyEptHRwFiPSXyyHkgurRg&libraries=visualization"></script>
+</head>
+<body>
+
+<div id="hud">
+    <h3 style="margin:0 0 10px 0; color: #facc15;">SRI LANKA LIVE FEED</h3>
+    <div class="item">Status: <span id="status" class="success">CONNECTING...</span></div>
+    <div class="item">Ships Detected: <span id="count" style="color:#fff; font-size:16px">0</span></div>
+    <div class="item" style="color:#aaa; font-size:11px">Zone: Dondra Head (Major Lane)</div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    let map;
+    let ws;
+    const markers = {};
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            // 🎯 CENTERED EXACTLY ON THE SCAN BOX (South of Sri Lanka)
+            center: { lat: 6.0, lng: 80.5 }, 
+            zoom: 9, 
+            mapTypeId: 'satellite',
+            disableDefaultUI: true,
+            styles: [
+                { elementType: "geometry", stylers: [{ color: "#212121" }] },
+                { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+                { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+                { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
+            ]
+        });
+        
+        connectWebSocket();
+    }
+
+    function connectWebSocket() {
+        const wsUrl = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + "//" + window.location.host + "/ws/live-feed";
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            document.getElementById("status").innerText = "LIVE - SCANNING";
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // Draw Ship
+            if (!markers[data.mmsi]) {
+                markers[data.mmsi] = new google.maps.Marker({
+                    position: {lat: data.lat, lng: data.lon},
+                    map: map,
+                    title: "ID: " + data.mmsi,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 5, fillColor: "#fbbf24", fillOpacity: 1, strokeWeight: 0
+                    }
+                });
+                document.getElementById("count").innerText = Object.keys(markers).length;
+            } else {
+                markers[data.mmsi].setPosition({lat: data.lat, lng: data.lon});
+            }
+
+            // Draw Impact/Drift Zones (Red Circles)
+            if(data.impact_zones.length > 0) {
+                data.impact_zones.forEach(zone => {
+                    new google.maps.Circle({
+                        strokeColor: "#ef4444", strokeOpacity: 0.8, strokeWeight: 1,
+                        fillColor: "#ef4444", fillOpacity: 0.4,
+                        map: map,
+                        center: {lat: zone.lat, lng: zone.lon},
+                        radius: zone.radius_km * 1000 
+                    });
+                });
+            }
+        };
+        
+        ws.onclose = () => setTimeout(connectWebSocket, 2000);
+    }
+
+    window.onload = initMap;
+</script>
+</body>
+</html>
